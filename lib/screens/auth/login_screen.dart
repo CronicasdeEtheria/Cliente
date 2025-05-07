@@ -117,19 +117,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
                           ),
-                          onPressed: _loading
-                              ? null
-                              : () async {
-                                  if (!_formKey.currentState!.validate()) return;
-                                  _formKey.currentState!.save();
-                                  setState(() => _loading = true);
-                                  final err = await auth.login(_id, _pass);
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _loading = false;
-                                    _error = err;
-                                  });
-                                },
+ onPressed: _loading
+  ? null
+  : () async {
+      if (!_formKey.currentState!.validate()) return;
+      _formKey.currentState!.save();
+      setState(() => _loading = true);
+      final err = await auth.login(_id, _pass);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = err;
+      });
+      if (err == null) {
+        // Login OK → navegar a MainNavScreen
+        Navigator.pushReplacementNamed(context, '/');
+      }
+    },
+
                           child: _loading
                               ? const SizedBox(
                                   height: 20,

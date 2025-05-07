@@ -1,59 +1,95 @@
+// lib/viewmodels/auth_viewmodel.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class AuthViewModel extends ChangeNotifier {
   final ApiService api;
-  String? uid;
-  String? token;
-  bool get isLogged => uid != null && token != null;
+
+  String? _uid;
+  String? _token;
+  String? _username;
+  String? _raceId;
+
+  bool get isLogged => _uid != null && _token != null;
+  String get username => _username ?? '';
+  String get raceId   => _raceId   ?? '';
 
   AuthViewModel(this.api);
 
-  // Carga token persistente (opcional)
+  /// Carga la sesión guardada (uid, token, username, raceId).
   Future<void> loadSession() async {
     final sp = await SharedPreferences.getInstance();
-    uid   = sp.getString('uid');
-    token = sp.getString('token');
-    if (isLogged) api.setAuth(uid: uid!, token: token!);
+    _uid      = sp.getString('uid');
+    _token    = sp.getString('token');
+    _username = sp.getString('username');
+    _raceId   = sp.getString('raceId');
+    if (isLogged) {
+      api.setAuth(uid: _uid!, token: _token!);
+    }
     notifyListeners();
   }
 
-Future<String?> login(String idOrEmail, String pass) async {
-  final resp = await api.login(idOrEmail, pass);
+  /// Inicio de sesión con identificador (usuario o email) + contraseña.
+  /// Almacena uid, token, username y raceId, y los persiste.
+  Future<String?> login(String identifier, String pass) async {
+    final resp = await api.login(identifier, pass);
     if (resp['ok'] == true) {
-      uid   = resp['uid'];
-      token = resp['token'];
-      api.setAuth(uid: uid!, token: token!);
+      _uid   = resp['uid']  as String?;
+      _token = resp['token']as String?;
+      api.setAuth(uid: _uid!, token: _token!);
+
+      // Opcional: cargar perfil para sacar raceId y username
+      final profile = await api.getUserProfile();
+      _username = profile['username'] as String?;
+      _raceId   = profile['race']    as String?;
 
       final sp = await SharedPreferences.getInstance();
-      await sp.setString('uid', uid!);
-      await sp.setString('token', token!);
-
+      await sp
+        ..setString('uid', _uid!)
+        ..setString('token', _token!)
+        ..setString('username', _username ?? '')
+        ..setString('raceId', _raceId ?? '');
       notifyListeners();
-      return null; // éxito
+      return null;
     }
-    return resp['error'] ?? 'Error desconocido';
+    return resp['error'] as String? ?? 'Error desconocido';
   }
 
-Future<String?> register(
-  String user,
-  String email,
-  String pass,
-  String race,
-) async {
-  final resp = await api.register(user, email, pass, race);
-  if (resp['ok'] == true) {
-    return await login(user, pass);           // autologin
+  /// Registro + autologin. Recibe usuario, email, contraseña y raza.
+  Future<String?> register(
+    String user,
+    String email,
+    String pass,
+    String race,
+  ) async {
+    final resp = await api.register(user, email, pass, race);
+    if (resp['ok'] == true) {
+      // Después de registrar, nos logeamos automáticamente:
+      return await login(email, pass);
+    }
+    return resp['error'] as String? ?? 'Error desconocido';
   }
-  return resp['error'] ?? 'Error desconocido';
-}
 
+  /// Elimina sesión y limpia almacenamiento.
   Future<void> logout() async {
-    uid = token = null;
+    _uid = _token = _username = _raceId = null;
     final sp = await SharedPreferences.getInstance();
-    await sp.remove('uid');
-    await sp.remove('token');
+    await sp
+      ..remove('uid')
+      ..remove('token')
+      ..remove('username')
+      ..remove('raceId');
+    notifyListeners();
+  }
+
+  /// Opcional: recarga explícita del perfil (por si cambian datos).
+  Future<void> refreshProfile() async {
+    if (!isLogged) return;
+    final profile = await api.getUserProfile();
+    _username = profile['username'] as String?;
+    _raceId   = profile['race']    as String?;
     notifyListeners();
   }
 }

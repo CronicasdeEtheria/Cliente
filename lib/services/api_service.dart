@@ -139,10 +139,9 @@ Future<Map<String, dynamic>> login(String identifier, String pass) async {
       _safeJson(await http.post(Uri.parse('$baseUrl/user/collect'),
           headers: _headers));
 
-  Future<Map<String, dynamic>> cancelConstruction(String buildId) async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/build/cancel'),
-          headers: _headers, body: jsonEncode({'buildId': buildId})));
-
+Future<Map<String, dynamic>> cancelConstruction() async =>
+    _safeJson(await http.post(Uri.parse('$baseUrl/build/cancel'),
+        headers: _headers));
   Future<Map<String, dynamic>> startTraining(String unitId, int qty) async =>
       _safeJson(await http.post(Uri.parse('$baseUrl/train/start'),
           headers: _headers,
@@ -181,7 +180,11 @@ Future<Map<String, dynamic>> login(String identifier, String pass) async {
       _safeJson(await http.post(Uri.parse('$baseUrl/guild/info'),
           headers: _headers, body: jsonEncode({'guildId': guildId})));
 
-  // (uploadGuildImage pendiente)
+  Future<Map<String, dynamic>> startConstruction(String buildId, int level) async =>
+    _safeJson(await http.post(Uri.parse('$baseUrl/build/start'),
+        headers: _headers,
+        body: jsonEncode({'buildId': buildId, 'targetLevel': level})));
+
 
   Future<Map<String, dynamic>> kickMember(String memberId) async =>
       _safeJson(await http.post(Uri.parse('$baseUrl/guild/kick_member'),
@@ -203,6 +206,10 @@ Future<Map<String, dynamic>> login(String identifier, String pass) async {
     final data = (json['buildings'] ?? []) as List;
     return data.map((e) => Building.fromJson(e)).toList();
   }
+  Future<Map<String, dynamic>> fetchBuildQueue() async =>
+    _safeJson(await http.post(Uri.parse('$baseUrl/build/status'),
+        headers: _headers));
+
 
   Future<Map<String, dynamic>> fetchUserBattleStats() async =>
       _safeJson(await http.post(Uri.parse('$baseUrl/user/battle_stats'),
