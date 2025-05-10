@@ -13,9 +13,10 @@ class AuthViewModel extends ChangeNotifier {
   String? _raceId;
 
   bool get isLogged => _uid != null && _token != null;
+  String get uid     => _uid!;                // <-- Getter expuesto para uid
   String get username => _username ?? '';
   String get raceId   => _raceId   ?? '';
-
+  
   AuthViewModel(this.api);
 
   /// Carga la sesión guardada (uid, token, username, raceId).

@@ -1,8 +1,8 @@
-// lib/screens/homescreen/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:guild_client/screens/barracks_screen.dart';
+import 'package:guild_client/screens/chat_screen.dart';
 import 'package:guild_client/screens/homescreen/bulding_action_sheet.dart';
+import 'package:guild_client/screens/homescreen/widget/training_queue_panel.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/building.dart';
@@ -11,15 +11,14 @@ import 'widget/building_layer.dart';
 import 'widget/construction_queue_panel.dart';
 import 'widget/resource_bar.dart';
 
-/// Posición relativa de cada edificio (x,y 0‑1)
 const Map<String, Offset> kPositions = {
-  'townhall':   Offset(.20, .40),
-  'farm':       Offset(.45, .35),
+  'townhall': Offset(.20, .40),
+  'farm': Offset(.45, .35),
   'lumbermill': Offset(.70, .45),
-  'stonemine':  Offset(.35, .52),
-  'warehouse':  Offset(.55, .58),
-  'barracks':   Offset(.80, .38),
-  'coliseo':    Offset(.10, .33),
+  'stonemine': Offset(.35, .52),
+  'warehouse': Offset(.55, .58),
+  'barracks': Offset(.80, .38),
+  'coliseo': Offset(.10, .33),
 };
 
 class HomeScreen extends StatefulWidget {
@@ -57,15 +56,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final data = snap.data!;
-        // ─── Depuración ───
         print('🏗️ /user/stats response: $data');
 
-        // ─── Recursos y balance ───
-        final res    = Map<String, int>.from(data['resources']);
-        final prodH  = Map<String, int>.from(data['prod_hour']);
-        final cap    = Map<String, int>.from(data['capacity']);
+        final res = Map<String, int>.from(data['resources']);
+        final prodH = Map<String, int>.from(data['prod_hour']);
+        final cap = Map<String, int>.from(data['capacity']);
 
-        // ─── Construcción de la lista de edificios ───
         final fromSrvRaw = data['buildings'] as List;
         print('🏗️ raw buildings array: $fromSrvRaw');
 
@@ -85,7 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
             )
         ];
 
-        // ─── UI ───────────────────────────────
         return Stack(
           children: [
             Positioned.fill(
@@ -106,23 +101,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-BuildingLayer(
-  buildings: buildings,
-  mapW: size.width,
-  mapH: size.height,
-  positions: kPositions,
-  onTapBuilding: (b) => showBuildingActions(
-    context,
-    b,
-    onUpgradeOk: _loadStats,
-    onTrain: (ctx, building) {
-      // Si es barracks o coliseo, abre la pantalla de entrenamiento
-      Navigator.pop(ctx); // cierra el diálogo
-showBarracksDialog(ctx);
-    },
-  ),
-),
+            BuildingLayer(
+              buildings: buildings,
+              mapW: size.width,
+              mapH: size.height,
+              positions: kPositions,
+              onTapBuilding: (b) => showBuildingActions(
+                context,
+                b,
+                onUpgradeOk: _loadStats,
+                onTrain: (ctx, building) {
+                  Navigator.of(ctx).maybePop();
+                  Future.delayed(const Duration(milliseconds: 10), () {
+                    showBarracksDialog(context);
+                  });
+                },
+              ),
+            ),
             const ConstructionQueuePanel(),
+                const TrainingQueuePanel(),
+            const GlobalChatPanel(),
+
           ],
         );
       },

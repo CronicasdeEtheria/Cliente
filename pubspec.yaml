@@ -38,6 +38,10 @@ dependencies:
   http: ^1.4.0
   shared_preferences: ^2.5.3
   flutter_svg: ^2.1.0
+  intl: ^0.20.2
+  image_picker: ^1.1.2
+  http_parser: ^4.1.2
+  mime: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +72,7 @@ flutter:
    - assets/images/
    - assets/races/
    - assets/soliders/
+   - assets/guild_icons/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

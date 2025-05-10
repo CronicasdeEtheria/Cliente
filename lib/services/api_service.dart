@@ -5,6 +5,7 @@
 // para rutas protegidas.
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../models/building.dart';
@@ -12,6 +13,8 @@ import '../models/unit.dart';
 import '../models/race.dart';
 import '../models/guild.dart';
 import '../models/message.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 
 class ApiService {
   final String baseUrl;
@@ -90,15 +93,54 @@ Future<Map<String, dynamic>> login(String identifier, String pass) async {
   Future<List<dynamic>> fetchGuildRanking() async =>
       jsonDecode((await http.get(Uri.parse('$baseUrl/guild/ranking'))).body)
           as List;
+Future<Map<String, dynamic>> uploadGuildImage(
+    String guildId,
+    File imageFile,
+  ) async {
+    final uri = Uri.parse('$baseUrl/guild/upload_image');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_headers)
+      ..fields['guild_id'] = guildId;
+
+    final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
+    final parts = mimeType.split('/');
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'image',
+        imageFile.path,
+        contentType: MediaType(parts[0], parts[1]),
+      ),
+    );
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    try {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return {'status': 'error', 'error': response.body};
+    }
+  }
 
   Future<Uint8List> fetchGuildImage(String guildId) async =>
       (await http.get(Uri.parse('$baseUrl/guild/image/$guildId'))).bodyBytes;
 
-  Future<List<Message>> fetchChatHistory() async {
-    final resp = await http.get(Uri.parse('$baseUrl/chat/global/history'));
-    final data = jsonDecode(resp.body) as List;
-    return data.map((e) => Message.fromJson(e)).toList();
-  }
+/// Envía un mensaje al chat global.
+Future<Map<String, dynamic>> sendGlobalMessage(String message) async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/chat/global/send'),
+    headers: _headers,
+    body: jsonEncode({'message': message}),
+  );
+  return _safeJson(resp);
+}
+
+/// Recupera el historial (hasta 50 mensajes) del chat global.
+Future<List<Message>> fetchChatHistory() async {
+  final resp = await http.get(Uri.parse('$baseUrl/chat/global/history'));
+  final data = jsonDecode(resp.body) as List;
+  return data.map((e) => Message.fromJson(e)).toList();
+}
+
 
   Future<List<dynamic>> fetchUserRanking() async =>
       jsonDecode((await http.get(Uri.parse('$baseUrl/ranking'))).body) as List;
@@ -139,13 +181,43 @@ Future<Map<String, dynamic>> login(String identifier, String pass) async {
       _safeJson(await http.post(Uri.parse('$baseUrl/user/collect'),
           headers: _headers));
 
-Future<Map<String, dynamic>> cancelConstruction() async =>
-    _safeJson(await http.post(Uri.parse('$baseUrl/build/cancel'),
-        headers: _headers));
-  Future<Map<String, dynamic>> startTraining(String unitId, int qty) async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/train/start'),
-          headers: _headers,
-          body: jsonEncode({'unitId': unitId, 'quantity': qty})));
+Future<Map<String, dynamic>> cancelConstruction(String id) async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/build/cancel'),
+    headers: _headers,
+    body: jsonEncode({'id': id}),
+  );
+  return _safeJson(resp);
+}
+
+Future<Map<String, dynamic>> startTraining({
+  required String unitType,
+  required int quantity,
+}) async {
+  final uri = Uri.parse('$baseUrl/train/start');
+  final response = await http.post(
+    uri,
+    headers: _headers,              // <— incluye content-type, uid y token
+    body: jsonEncode({
+  'uid': _uid,                 // vuelve a ponerlo
+      'unit_type': unitType,
+      'quantity': quantity,
+    }),
+  );
+
+  if (response.statusCode != 200) {
+    // ...
+  }
+  return jsonDecode(response.body) as Map<String, dynamic>;
+}
+Future<Map<String, dynamic>> fetchQueueStatus() async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/sync/queues'),
+    headers: _headers,
+    body: jsonEncode({'uid': _uid}),
+  );
+  return _safeJson(resp);
+}
 
   Future<Map<String, dynamic>> cancelTraining(String trainId) async =>
       _safeJson(await http.post(Uri.parse('$baseUrl/train/cancel'),
@@ -164,21 +236,51 @@ Future<Map<String, dynamic>> cancelConstruction() async =>
               headers: _headers))
           .body) as List;
 
-  Future<Map<String, dynamic>> createGuild(String name) async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/guild/create'),
-          headers: _headers, body: jsonEncode({'name': name})));
+Future<Map<String, dynamic>> createGuild(
+  String name, {
+  String? defaultIcon,
+}) async {
+  final body = {
+    'name': name,
+    if (defaultIcon != null) 'default_icon': defaultIcon,
+  };
+  final resp = await http.post(
+    Uri.parse('$baseUrl/guild/create'),
+    headers: _headers,
+    body: jsonEncode(body),
+  );
+  return _safeJson(resp);
+}
 
-  Future<Map<String, dynamic>> joinGuild(String guildId) async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/guild/join'),
-          headers: _headers, body: jsonEncode({'guildId': guildId})));
+Future<Map<String, dynamic>> joinGuild(String guildId) async {
+  final uri = Uri.parse('$baseUrl/guild/join');
+  final response = await http.post(
+    uri,
+    headers: _headers,  
+    body: jsonEncode({
+      'uid': _uid,           
+      'guild_id': guildId,    
+    }),
+  );
+  return _safeJson(response);
+}
 
-  Future<Map<String, dynamic>> leaveGuild() async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/guild/leave'),
-          headers: _headers));
+
+Future<Map<String, dynamic>> leaveGuild() async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/guild/leave'),
+    headers: _headers,       
+    body: jsonEncode({       
+      'uid': _uid,
+    }),
+  );
+  return _safeJson(resp);
+}
+
 
   Future<Map<String, dynamic>> getGuildInfo(String guildId) async =>
       _safeJson(await http.post(Uri.parse('$baseUrl/guild/info'),
-          headers: _headers, body: jsonEncode({'guildId': guildId})));
+          headers: _headers, body: jsonEncode({'guild_id': guildId})));
 
   Future<Map<String, dynamic>> startConstruction(String buildId, int level) async =>
     _safeJson(await http.post(Uri.parse('$baseUrl/build/start'),
@@ -211,9 +313,37 @@ Future<Map<String, dynamic>> cancelConstruction() async =>
         headers: _headers));
 
 
-  Future<Map<String, dynamic>> fetchUserBattleStats() async =>
-      _safeJson(await http.post(Uri.parse('$baseUrl/user/battle_stats'),
-          headers: _headers));
+Future<List<dynamic>> fetchBattleReports() async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/battle/history'),
+    headers: _headers,
+    body: jsonEncode({'uid': _uid}),
+  );
+  return jsonDecode(resp.body) as List<dynamic>;
+}
+
+
+Future<List<dynamic>> fetchUserArmy() async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/battle/army'),
+    headers: _headers,
+    body: jsonEncode({'uid': _uid}),
+  );
+  return jsonDecode(resp.body) as List<dynamic>;
+}
+
+Future<Map<String, dynamic>> randomBattleWithArmy(
+    Map<String, int> army) async {
+  final resp = await http.post(
+    Uri.parse('$baseUrl/battle/random'),
+    headers: _headers,
+    body: jsonEncode({
+      'uid': _uid,
+      'army': army,
+    }),
+  );
+  return _safeJson(resp);
+}
 
   // ── CATÁLOGOS (opcionales, si los sirves desde servidor) ───────────
   Future<List<Unit>> fetchUnits() async {
