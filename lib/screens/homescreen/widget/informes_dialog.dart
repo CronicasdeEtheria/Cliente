@@ -59,7 +59,7 @@ class _ReportsViewState extends State<_ReportsView> {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Battle Reports',
+                  'Informes',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -88,7 +88,7 @@ class _ReportsViewState extends State<_ReportsView> {
               if (snap.hasError || list == null || list.isEmpty) {
                 return const Center(
                   child: Text(
-                    'No battle reports',
+                    'No hay informes',
                     style: TextStyle(color: Colors.white54),
                   ),
                 );
@@ -203,7 +203,7 @@ const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              listIsLong ? 'Showing 3 of all reports' : '',
+              listIsLong ? 's' : '',
               style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ),
