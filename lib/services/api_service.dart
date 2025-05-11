@@ -142,8 +142,25 @@ Future<List<Message>> fetchChatHistory() async {
 }
 
 
-  Future<List<dynamic>> fetchUserRanking() async =>
-      jsonDecode((await http.get(Uri.parse('$baseUrl/ranking'))).body) as List;
+Future<List<dynamic>> fetchUserRanking({
+  String type = 'elo',
+  String? race,
+  int limit = 20,
+}) async {
+  // Construye la URI con query parameters
+  final uri = Uri.parse('$baseUrl/ranking').replace(queryParameters: {
+    'type': type,
+    if (race != null) 'race': race,
+    'limit': limit.toString(),
+  });
+
+  final response = await http.get(uri);
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body) as List;
+  } else {
+    throw Exception('Error ${response.statusCode} al cargar ranking');
+  }
+}
 
   Future<List<dynamic>> fetchOnlineUsers() async =>
       jsonDecode((await http.get(Uri.parse('$baseUrl/online_users'))).body)
