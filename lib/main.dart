@@ -8,11 +8,13 @@ import 'package:guild_client/viewmodels/auth_viewmodels.dart';
 import 'package:provider/provider.dart';
 import 'utils/orientations.dart';             // tu helper forceLandscape()
 import 'services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   forceLandscape();
+  await dotenv.load(fileName: ".env");
 
   // Instancias principales
   final api  = ApiService();

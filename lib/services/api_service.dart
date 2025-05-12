@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/building.dart';
 import '../models/unit.dart';
@@ -21,7 +22,10 @@ class ApiService {
   String? _uid;
   String? _token;
 
-  ApiService({this.baseUrl = 'http://10.0.2.2:8080'});
+ ApiService({String? baseUrl})
+      : baseUrl = baseUrl ??
+          dotenv.env['BASE_URL'] ??
+          'http://localhost:3090';
 
   // ── AUTENTICACIÓN ────────────────────────────────────────────────
   void setAuth({required String uid, required String token}) {
