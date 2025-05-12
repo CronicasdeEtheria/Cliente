@@ -1,61 +1,90 @@
+// Top‑level imports necesarios
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-def keystorePropertiesFile = rootProject.file("key.properties")
-def keystoreProperties = new Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(FileInputStream(keystorePropertiesFile))
+    } else {
+        println("⚠️ key.properties no encontrado en la raíz del proyecto")
+    }
 }
 
 android {
-    namespace = "com.hid33nstudios.guildclient.guild_client"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
+    namespace = "com.rodrigguild.guild"
+    compileSdk = 35
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.hid33nstudios.guildclient.guild_client"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.rodrigguild.guild"
+        minSdk        = 23
+        targetSdk     = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-    release {
-        keyAlias keystoreProperties['keyAlias']
-        keyPassword keystoreProperties['keyPassword']
-        storeFile file(keystoreProperties['storeFile'])
-        storePassword keystoreProperties['storePassword']
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
+    kotlinOptions {
+ jvmTarget = JavaVersion.VERSION_11.toString()  
+   }
+    dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("androidx.window:window:1.0.0")
+    implementation("androidx.window:window-java:1.0.0")
 }
+
+    signingConfigs {
+       if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias      = keystoreProperties["keyAlias"]   as String
+                keyPassword   = keystoreProperties["keyPassword"] as String
+                storeFile     = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
 
     buildTypes {
-    release {
-       
-        signingConfig signingConfigs.release
+        getByName("debug") {
+        }
+        getByName("release") {
+            isMinifyEnabled = true      // activa R8/ProGuard
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+             if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+        }
     }
-    debug {
-        signingConfig signingConfigs.release  
-    }
-}
-
 }
 
 flutter {
     source = "../.."
 }
+  buildscript {
+    repositories {
+      google()
+      mavenCentral()
+    }
+  }
+
+  allprojects {
+    repositories {
+      google()
+      mavenCentral()
+    }
+  }

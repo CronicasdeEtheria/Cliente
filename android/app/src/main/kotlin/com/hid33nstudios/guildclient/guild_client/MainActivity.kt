@@ -1,4 +1,4 @@
-package com.hid33nstudios.guildclient.guild_client
+package com.rodrigguild.guild
 
 import io.flutter.embedding.android.FlutterActivity
 
